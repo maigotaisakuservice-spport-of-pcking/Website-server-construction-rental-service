@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Linux in the Browser</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Linux in the Browser</h1>
+
+    <div id="loading_container">
+        <p>
+            Status: <span id="loading_status">Initializing...</span>
+        </p>
+        <div id="progress_bar" style="width: 500px; height: 20px; border: 1px solid #ccc; background-color: #f0f0f0;">
+            <div id="progress_bar_inner" style="width: 0%; height: 100%; background-color: #4caf50;"></div>
+        </div>
+    </div>
+
+    <div id="emulator_container" style="display: none;">
+        <div id="screen_container"></div>
+        <div id="serial_container" style="white-space: pre; font-family: monospace;"></div>
+    </div>
+
+    <div id="state_container">
+        <p>State: <span id="state_text">Idle</span></p>
+    </div>
+
+    <!-- Load v86 and the main script at the end of the body -->
+    <script src="https://unpkg.com/v86/build/libv86.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
