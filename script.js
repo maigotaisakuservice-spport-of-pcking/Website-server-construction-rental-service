@@ -1,53 +1,73 @@
-// Dynamically load the v86 library from a CDN
-const v86Script = document.createElement('script');
-v86Script.src = 'https://unpkg.com/v86/build/libv86.js';
-document.head.appendChild(v86Script);
+// --- UI Element References ---
+const loadingContainer = document.getElementById("loading_container");
+const loadingStatus = document.getElementById("loading_status");
+const progressBarInner = document.getElementById("progress_bar_inner");
+const emulatorContainer = document.getElementById("emulator_container");
+const stateText = document.getElementById("state_text");
 
-v86Script.onload = function() {
-    console.log("v86 library loaded.");
-    const loadingMessage = document.querySelector('p');
+// --- Loading Process ---
+(function() {
+    // Wait for the DOM to be fully loaded before starting
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start);
+    } else {
+        start();
+    }
 
-    // Configuration for a lightweight, yet functional, Arch Linux
-    const emulator = new window.V86Starter({
-        wasm_path: "https://unpkg.com/v86/build/v86.wasm",
-        memory_size: 512 * 1024 * 1024, // 512 MB for a better experience
-        vga_memory_size: 8 * 1024 * 1024,
+    function start() {
+        loadingStatus.textContent = "Initializing emulator...";
 
-        serial_container: document.getElementById("serial_container"),
-        screen_container: document.getElementById("screen_container"),
+        const emulator = new window.V86Starter({
+            wasm_path: "https://unpkg.com/v86/build/v86.wasm",
+            memory_size: 512 * 1024 * 1024,
+            vga_memory_size: 8 * 1024 * 1024,
+            serial_container: document.getElementById("serial_container"),
+            screen_container: document.getElementById("screen_container"),
+            initial_state: {
+                url: "https://v86.app/images/archlinux.json",
+            },
+            filesystem: {
+                persistent: true,
+            },
+            autostart: true,
+        });
 
-        // Use a more capable Arch Linux image
-        // The state is downloaded from a URL if not present in IndexedDB
-        initial_state: {
-            url: "https://v86.app/images/archlinux.json",
-        },
-        // Enable persistence to IndexedDB
-        filesystem: {
-            persistent: true,
-        },
+        // --- Event Listeners for Loading and State ---
 
-        autostart: true,
-    });
+        emulator.add_listener("download-progress", function(e) {
+            const total = e.total;
+            const loaded = e.loaded;
+            const percentage = Math.round((loaded / total) * 100);
 
-    // --- State Persistence UI ---
-    const stateText = document.getElementById("state_text");
+            loadingStatus.textContent = `Downloading Linux image... (${(loaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB)`;
+            progressBarInner.style.width = percentage + "%";
+        });
 
-    emulator.add_listener("emulator-loaded", function() {
-        stateText.textContent = "Ready";
-    });
+        emulator.add_listener("emulator-loaded", function() {
+            loadingStatus.textContent = "Image downloaded. Booting OS...";
+            stateText.textContent = "Ready";
+        });
 
-    emulator.add_listener("save-state-start", function() {
-        stateText.textContent = "Saving...";
-    });
+        emulator.add_listener("boot-ok", function() {
+            loadingContainer.style.display = "none";
+            emulatorContainer.style.display = "flex";
+        });
 
-    emulator.add_listener("save-state-end", function() {
-        stateText.textContent = "Saved";
-    });
+        emulator.add_listener("save-state-start", function() {
+            stateText.textContent = "Saving...";
+        });
 
-    emulator.add_listener("restore-state-end", function() {
-        stateText.textContent = "Restored";
-    });
+        emulator.add_listener("save-state-end", function() {
+            stateText.textContent = "Saved";
+        });
 
-    // Update the UI message
-    loadingMessage.textContent = "Arch Linux is booting. Interact with the terminal below.";
-};
+        emulator.add_listener("restore-state-start", function() {
+            loadingStatus.textContent = "Restoring state from browser DB...";
+            stateText.textContent = "Restoring...";
+        });
+
+        emulator.add_final_listener("restore-state-end", function() {
+            stateText.textContent = "Restored";
+        });
+    }
+})();
